@@ -12,10 +12,31 @@ fn main(
   nullifier: pub [u8; 32],
 ) {
   // Write your main logic here
+
+  // Recover the signer's address from signature, hashed message and public key. (@ https://github.com/colinnielsen/ecrecover-noir)
+  let key = ecrecover::secp256k1::PubKey::from_unified(pub_key);
+  let signer_address = ecrecover::ecrecover(key.pub_x, key.pub_y, signature, hashed_message);
+
+  // Check whether the address is included in the polynomial. To do this, you will have to make sure the evaluation of polynomial at address is 0.
+  assert(evaluate_polynomial(polynomial, signer_address) == 0);
+
+  // Check the given nullifier is a valid hash of signature. We are using blake hash for hashing signature. The hash is already implemented and can be accessed via std::hash::blake2s
+  let polynomial_hash = std::hash::pedersen(polynomial);
+  assert(polynomial_hash[0] == polynomial_commitment);
 }
 
 fn evaluate_polynomial(polynomial: [Field; CANDIDATES + 1], x: Field) -> Field {
   // Write logic to evaluate polynomial here
+  let mut mult = 1;
+  let mut evaluation = 0;
+
+  for idx in 0..CANDIDATES+1 {
+    evaluation = polynomial[idx]*mult + evaluation;
+
+    mult = mult * x;
+  }
+
+  evaluation
 }
 
 #[test]
